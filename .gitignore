@@ -1,33 +1,15 @@
-# Gradle files
-.gradle/
-build/
-
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Log/OS Files
-*.log
-
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.apk
-output.json
-
-# IntelliJ
-*.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
-
-# Keystore files
-*.jks
-*.keystore
-
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
+venv/
+/YOLOv8/Tools/.vscode
+/YOLOv8/Tools/MYvenv
+/YOLOv8/Tools/Model_Conversion/MYvenv
+/YOLOv8/Tools/TFLite_Benchmark/venv
+/YOLOv8/Tools/PyTorch_Benchmark/venv
+/YOLOv8/Tools/BoundBoxPython/myenv
+/digitEnv
+/10000 DIDA
+venv/
+env/
+.myenv/
+*/venv/
+*/env/
+*/.venv/
