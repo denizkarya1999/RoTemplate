@@ -54,7 +54,7 @@
             android:id="@+id/titleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Xamera R2"
+            android:text="RoTemplate"
             android:textSize="44sp"
             android:textColor="@color/yellow"
             android:textStyle="bold"
@@ -140,41 +140,7 @@
             android:text="-"
             android:textColor="@color/darkBlue"
             android:textSize="24sp" />
-
-        <!-- Clear Prediction Button ("C") -->
-        <Button
-            android:id="@+id/clearPredictionButton"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:backgroundTint="@color/red"
-            android:elevation="2dp"
-            android:text="C"
-            android:textColor="@android:color/white"
-            android:textSize="24sp" />
-
-        <!-- Inference Button (launches EmotionActivity) -->
-        <Button
-            android:id="@+id/inferenceButton"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:layout_marginTop="16dp"
-            android:backgroundTint="@color/green"
-            android:elevation="2dp"
-            android:text="I"
-            android:textColor="@android:color/white"
-            android:textSize="24sp" />
     </LinearLayout>
-
-    <!-- TextView to display the predicted letter -->
-    <TextView
-        android:id="@+id/predictedEmotionTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="No Prediction Yet"
-        android:textSize="24sp"
-        android:textColor="@color/yellow"
-        android:layout_gravity="center_horizontal|bottom"
-        android:layout_marginBottom="180dp" />
 
     <!-- Bottom Controls -->
     <LinearLayout
@@ -185,6 +151,17 @@
         android:gravity="center"
         android:layout_gravity="center_horizontal|bottom"
         android:layout_marginBottom="50dp">
+
+        <!-- Start Recording Button (green) -->
+        <Button
+            android:id="@+id/startRecordingButton"
+            android:layout_width="110dp"
+            android:layout_height="110dp"
+            android:backgroundTint="@color/green"
+            android:elevation="2dp"
+            android:text="Capture Video"
+            android:textColor="@android:color/white"
+            android:layout_marginEnd="16dp" />
 
         <!-- Start Tracking Button -->
         <Button

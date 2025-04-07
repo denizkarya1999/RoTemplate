@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.developer27.xamera.routism"
+    namespace = "com.developer27.rotemplate"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.developer27.xamera.routism"
+        applicationId = "com.developer27.rotemplate"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -77,11 +77,6 @@ dependencies {
         exclude(group = "org.bytedeco", module = "libc++_shared")
     }
 
-    //implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
-    implementation(files("libs/ar-app-release.aar"))
-
-    implementation("androidx.games:games-activity:3.0.5")
-
     // ML Kit, etc.
     implementation("com.google.mlkit:vision-common:17.3.0")
 
@@ -98,9 +93,6 @@ dependencies {
     implementation("androidx.camera:camera-video:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
     implementation("androidx.camera:camera-extensions:$cameraxVersion")
-
-    // ARCore (pick a recent version)
-    implementation("com.google.ar:core:1.36.0")
 
     // Sceneform Community Fork (core + ux)
     implementation("com.gorisse.thomas.sceneform:sceneform:1.19.6")
@@ -124,7 +116,4 @@ dependencies {
 
     // Apache Commons Math
     implementation("org.apache.commons:commons-math3:3.6.1")
-
-    // ARCore library
-    implementation("com.google.ar:core:1.36.0")
 }

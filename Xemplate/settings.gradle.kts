@@ -16,6 +16,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Xemplate"
+rootProject.name = "RoTemplate"
 include(":app")
 include(":OpenCV-4.10.0")

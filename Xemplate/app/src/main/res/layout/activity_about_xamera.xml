@@ -36,7 +36,7 @@
             android:id="@+id/titleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Xamera R2"
+            android:text="RoTemplate"
             android:textSize="44sp"
             android:textColor="@color/yellow"
             android:textStyle="bold"
@@ -64,7 +64,7 @@
             android:id="@+id/detailsHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="About Xamera R2"
+            android:text="About RoTemplate"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="@color/darkBlue"
@@ -75,22 +75,14 @@
             android:id="@+id/textViewEdition"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Designed for: RoUtism Research Project"
+            android:text="Designed for: All TAI Lab Projects"
             android:textColor="@color/darkBlue" />
 
         <TextView
             android:id="@+id/textViewVersion"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Version: 1.0 (Pre-Beta)"
-            android:textColor="@color/darkBlue"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:id="@+id/phaseNumber"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Phase: P1"
+            android:text="Version: 1.0"
             android:textColor="@color/darkBlue"
             android:layout_marginTop="8dp" />
 
@@ -98,7 +90,7 @@
             android:id="@+id/textViewReleaseDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Release Date: Estimated as April 2025"
+            android:text="Release Date: April 7th 2025"
             android:textColor="@color/darkBlue"
             android:layout_marginTop="8dp" />
 
@@ -106,7 +98,7 @@
             android:id="@+id/textViewDevelopers"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Developers: Deniz Acikbas, Soham Naik, Christian Nwobu, Sai Dheeraj Chunduru"
+            android:text="Developer: Deniz Acikbas"
             android:textColor="@color/darkBlue"
             android:layout_marginTop="8dp" />
 
@@ -123,14 +115,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Lab: Trustworthy AIoT Lab"
-            android:textColor="@color/darkBlue"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:id="@+id/textViewCourse"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Course: ENGR 492 - Experiential Honors Directed Research Project"
             android:textColor="@color/darkBlue"
             android:layout_marginTop="8dp" />
 
