@@ -219,7 +219,7 @@ class RecorderHelper(
 
         // clamp shutter & pick safe ISO
         val safeExposure = shutterValueNs.coerceIn(exposureRange.lower, exposureRange.upper)
-        val safeISO = max(isoRange.lower, 6400)
+        val safeISO = max(isoRange.lower, 650)
 
         // set manual
         builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_OFF)
