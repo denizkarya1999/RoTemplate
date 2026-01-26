@@ -287,7 +287,7 @@ class CameraHelper(
             CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR
         ) == true
 
-        val shutterFps = sharedPreferences.getString("shutter_speed", "15")?.toIntOrNull() ?: 15
+        val shutterFps = sharedPreferences.getString("shutter_speed", "6000")?.toIntOrNull() ?: 6000
         val shutterValueNs = if (shutterFps > 0) 1_000_000_000L / shutterFps else 0L
 
         // If no manual or user set 0, just do auto
@@ -308,7 +308,7 @@ class CameraHelper(
 
         // Read ISO prefs
         val manualIsoEnabled = sharedPreferences.getBoolean("manual_iso_enabled", true)
-        val isoFromPrefs = sharedPreferences.getString("iso_value", "800")?.toIntOrNull() ?: 800
+        val isoFromPrefs = sharedPreferences.getString("iso_value", "1100")?.toIntOrNull() ?: 1100
         val safeISO = isoFromPrefs.coerceIn(isoRange.lower, isoRange.upper)
 
         // Fully manual exposure; if manual ISO disabled, we still must set *some* ISO because AE is off.
