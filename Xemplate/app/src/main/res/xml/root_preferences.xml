@@ -14,7 +14,7 @@
             android:summary="Select the rolling shutter speed (in Hz)"
             android:entries="@array/shutter_speed_options"
             android:entryValues="@array/shutter_speed_values"
-            android:defaultValue="60" />
+            android:defaultValue="6000" />
 
         <!-- Optional: Explicitly toggle manual ISO usage -->
         <SwitchPreference
@@ -22,7 +22,7 @@
             android:layout="@layout/preference_list_layout"
             android:title="Manual ISO"
             android:summaryOn="Use the ISO value below"
-            android:summaryOff="Let the camera choose ISO"
+            android:summaryOff="Let the camera choose exposure and ISO"
             android:defaultValue="true" />
 
         <!-- User-entered ISO -->
@@ -30,8 +30,8 @@
             android:key="iso_value"
             android:layout="@layout/preference_list_layout"
             android:title="ISO"
-            android:summary="Enter ISO (e.g., 100–6400)"
-            android:defaultValue="800"
+            android:summary="Enter ISO (50–25600)"
+            android:defaultValue="1100"
             android:dialogTitle="Set ISO"
             android:inputType="number" />
     </PreferenceCategory>

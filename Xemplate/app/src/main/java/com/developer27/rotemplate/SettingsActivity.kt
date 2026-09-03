@@ -1,12 +1,12 @@
 package com.developer27.rotemplate
 
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreference
+import com.developer27.rotemplate.camera.CaptureSettings
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -26,37 +26,32 @@ class SettingsActivity : AppCompatActivity() {
             val manualIsoPref = findPreference<SwitchPreference>("manual_iso_enabled")
 
             val isoPref = findPreference<EditTextPreference>("iso_value")
+            isoPref?.isEnabled = manualIsoPref?.isChecked != false
             isoPref?.setOnBindEditTextListener { edit ->
-                // numeric only from XML; optionally add min/max hints
-                edit.hint = "100–6400"
+                edit.hint = "${CaptureSettings.MIN_ISO}–${CaptureSettings.MAX_ISO}"
+            }
+
+            manualIsoPref?.setOnPreferenceChangeListener { _, newValue ->
+                isoPref?.isEnabled = newValue as? Boolean ?: true
+                true
             }
 
             isoPref?.setOnPreferenceChangeListener { _, newValue ->
                 val entered = (newValue as? String)?.trim().orEmpty()
-                val iso = entered.toIntOrNull()
-                val clamped = when {
-                    iso == null -> null
-                    iso < 50 -> 50               // soft min (safer for low light)
-                    iso > 25600 -> 25600         // soft max; actual max will be clamped by camera
-                    else -> iso
-                }
+                val clamped = CaptureSettings.normalizeIso(entered)
                 if (clamped == null) {
                     Toast.makeText(context, "Please enter a valid ISO number.", Toast.LENGTH_SHORT).show()
                     false
                 } else {
-                    // Store the (soft) clamped value
-                    isoPref.text = clamped.toString()
+                    val normalizedValue = clamped.toString()
+                    if (normalizedValue != entered) {
+                        // Persist the corrected value ourselves and reject the original input.
+                        isoPref.text = normalizedValue
+                    }
                     Toast.makeText(context, "ISO set to $clamped", Toast.LENGTH_SHORT).show()
-                    true
+                    normalizedValue == entered
                 }
             }
         }
-    }
-
-    override fun onBackPressed() {
-        super.onBackPressed()
-        // Save settings and go back to MainActivity with result
-        setResult(RESULT_OK, Intent())
-        finish()
     }
 }

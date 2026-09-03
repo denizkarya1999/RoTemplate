@@ -11,8 +11,8 @@ android {
         applicationId = "com.developer27.rotemplate"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
@@ -56,10 +56,8 @@ android {
         }
     }
 
-    aaptOptions {
-        noCompress("pt")
-        noCompress("torchscript")
-        noCompress("tflite")
+    androidResources {
+        noCompress += listOf("pt", "torchscript", "tflite")
     }
 }
 

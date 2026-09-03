@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.opencv.android.Utils
@@ -17,7 +19,11 @@ import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.gpu.GpuDelegate
+import org.tensorflow.lite.nnapi.NnApiDelegate
 import org.tensorflow.lite.support.image.TensorImage
+import java.nio.MappedByteBuffer
+import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
 
@@ -31,9 +37,6 @@ data class BoundingBox(
     val x2: Float, val y2: Float,
     val confidence: Float, val classId: Int
 )
-
-private var tfliteInterpreter: Interpreter? = null
-// Removed rawDataList and smoothDataList since line drawing is no longer needed.
 
 // Object to hold various configuration settings.
 object Settings {
@@ -58,27 +61,65 @@ object Settings {
 }
 
 // Main VideoProcessor class.
-class VideoProcessor(private val context: Context) {
+class VideoProcessor(@Suppress("UNUSED_PARAMETER") context: Context) {
+    private val processingDispatcher = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "VideoProcessor")
+    }.asCoroutineDispatcher()
+    private val processingScope = CoroutineScope(SupervisorJob() + processingDispatcher)
+    private var tfliteInterpreter: Interpreter? = null
+    private var inferenceDelegate: AutoCloseable? = null
+    @Volatile
+    private var isClosed = false
+    private val isOpenCvAvailable: Boolean
 
     init {
-        initOpenCV()
+        isOpenCvAvailable = initOpenCV()
     }
-    private fun initOpenCV() {
-        try {
+    private fun initOpenCV(): Boolean {
+        return try {
             System.loadLibrary("opencv_java4")
+            true
         } catch (e: UnsatisfiedLinkError) {
-            Log.d("VideoProcessor","OpenCV failed to load: ${e.message}", e)
+            Log.e(TAG, "OpenCV failed to load: ${e.message}", e)
+            false
         }
     }
-    fun setInterpreter(model: Interpreter) {
-        synchronized(this) { tfliteInterpreter = model }
-        Log.d("VideoProcessor","TFLite Model set in VideoProcessor successfully!")
+    /** Creates and owns the interpreter on the same thread used for inference. */
+    fun loadInterpreter(modelBuffer: MappedByteBuffer, callback: (Throwable?) -> Unit) {
+        if (isClosed) return
+        processingScope.launch {
+            val error = try {
+                closeInterpreter()
+                val (interpreter, delegate) = createInterpreter(modelBuffer)
+                tfliteInterpreter = interpreter
+                inferenceDelegate = delegate
+                Log.d(TAG, "TFLite model loaded successfully")
+                null
+            } catch (t: Throwable) {
+                Log.e(TAG, "TFLite model failed to load", t)
+                t
+            }
+            withContext(Dispatchers.Main) { callback(error) }
+        }
+    }
+
+    fun close() {
+        if (isClosed) return
+        isClosed = true
+        processingScope.launch {
+            closeInterpreter()
+            processingDispatcher.close()
+        }
     }
     // Removed reset() and export/gather trace functions.
 
     // Processes a frame asynchronously and returns a Pair (outputBitmap, videoBitmap).
     fun processFrame(bitmap: Bitmap, callback: (Pair<Bitmap, Bitmap>?) -> Unit) {
-        CoroutineScope(Dispatchers.Default).launch {
+        if (isClosed || !isOpenCvAvailable) {
+            callback(null)
+            return
+        }
+        processingScope.launch {
             val result: Pair<Bitmap, Bitmap>? = try {
                 when (Settings.DetectionMode.current) {
                     Settings.DetectionMode.Mode.CONTOUR -> processFrameInternalCONTOUR(bitmap)
@@ -98,7 +139,6 @@ class VideoProcessor(private val context: Context) {
             // Removed trace drawing call.
             val (_, cMat) = ContourDetection.processContourDetection(pMat)
             val outBmp = Bitmap.createBitmap(cMat.cols(), cMat.rows(), Bitmap.Config.ARGB_8888).also { Utils.matToBitmap(cMat, it) }
-            pMat.release()
             cMat.release()
             outBmp to pBmp
         } catch (e: Exception) {
@@ -107,24 +147,36 @@ class VideoProcessor(private val context: Context) {
         }
     }
     // Processes a frame using YOLO.
-    private suspend fun processFrameInternalYOLO(bitmap: Bitmap): Pair<Bitmap, Bitmap> = withContext(Dispatchers.IO) {
+    private fun processFrameInternalYOLO(bitmap: Bitmap): Pair<Bitmap, Bitmap> {
         val (inputW, inputH, outputShape) = getModelDimensions()
         val (letterboxed, offsets) = YOLOHelper.createLetterboxedBitmap(bitmap, inputW, inputH)
         val m = Mat().also { Utils.bitmapToMat(bitmap, it) }
-        if (Settings.DetectionMode.enableYOLOinference && tfliteInterpreter != null) {
-            val out = Array(outputShape[0]) { Array(outputShape[1]) { FloatArray(outputShape[2]) } }
-            TensorImage(DataType.FLOAT32).apply { load(letterboxed) }.also { tfliteInterpreter?.run(it.buffer, out) }
-            YOLOHelper.parseTFLite(out)?.let {
-                val (box, _) = YOLOHelper.rescaleInferencedCoordinates(it, bitmap.width, bitmap.height, offsets, inputW, inputH)
-                if (Settings.BoundingBox.enableBoundingBox) YOLOHelper.drawBoundingBoxes(m, box)
-                // Removed trace drawing call.
+        try {
+            val interpreter = tfliteInterpreter
+            if (Settings.DetectionMode.enableYOLOinference && interpreter != null) {
+                val out = Array(outputShape[0]) { Array(outputShape[1]) { FloatArray(outputShape[2]) } }
+                TensorImage(DataType.FLOAT32).apply { load(letterboxed) }
+                    .also { interpreter.run(it.buffer, out) }
+                YOLOHelper.parseTFLite(out)?.let {
+                    val (box, _) = YOLOHelper.rescaleInferencedCoordinates(
+                        it,
+                        bitmap.width,
+                        bitmap.height,
+                        offsets,
+                        inputW,
+                        inputH
+                    )
+                    if (Settings.BoundingBox.enableBoundingBox) {
+                        YOLOHelper.drawBoundingBoxes(m, box)
+                    }
+                }
             }
-        }
-        val yoloBmp = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888).also {
-            Utils.matToBitmap(m, it)
+            val yoloBmp = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+                .also { Utils.matToBitmap(m, it) }
+            return yoloBmp to letterboxed
+        } finally {
             m.release()
         }
-        yoloBmp to letterboxed
     }
 
     // Retrieves the model input size dynamically.
@@ -135,6 +187,55 @@ class VideoProcessor(private val context: Context) {
         val outTensor = tfliteInterpreter?.getOutputTensor(0)
         val outShape = outTensor?.shape()?.toList() ?: listOf(1, 5, 3549)
         return Triple(w, h, outShape)
+    }
+
+    private fun createInterpreter(modelBuffer: MappedByteBuffer): Pair<Interpreter, AutoCloseable?> {
+        val threadCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+
+        try {
+            val delegate = NnApiDelegate()
+            try {
+                modelBuffer.rewind()
+                val options = Interpreter.Options().setNumThreads(threadCount).addDelegate(delegate)
+                return Interpreter(modelBuffer, options) to delegate
+            } catch (e: Exception) {
+                delegate.close()
+                Log.d(TAG, "NNAPI initialization failed; trying GPU", e)
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "NNAPI delegate unavailable; trying GPU", e)
+        }
+
+        try {
+            val delegate = GpuDelegate()
+            try {
+                modelBuffer.rewind()
+                val options = Interpreter.Options().setNumThreads(threadCount).addDelegate(delegate)
+                return Interpreter(modelBuffer, options) to delegate
+            } catch (e: Exception) {
+                delegate.close()
+                Log.d(TAG, "GPU initialization failed; using CPU", e)
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "GPU delegate unavailable; using CPU", e)
+        }
+
+        modelBuffer.rewind()
+        return Interpreter(
+            modelBuffer,
+            Interpreter.Options().setNumThreads(threadCount)
+        ) to null
+    }
+
+    private fun closeInterpreter() {
+        tfliteInterpreter?.close()
+        tfliteInterpreter = null
+        inferenceDelegate?.close()
+        inferenceDelegate = null
+    }
+
+    private companion object {
+        const val TAG = "VideoProcessor"
     }
 }
 
@@ -150,7 +251,11 @@ object Preprocessing {
         val tMat = Mat().also { Imgproc.threshold(eMat, it, Settings.Brightness.threshold, 255.0, Imgproc.THRESH_TOZERO); eMat.release() }
         val bMat = Mat().also { Imgproc.GaussianBlur(tMat, it, Size(5.0, 5.0), 0.0); tMat.release() }
         val k = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(3.0, 3.0))
-        val cMat = Mat().also { Imgproc.morphologyEx(bMat, it, Imgproc.MORPH_CLOSE, k); bMat.release() }
+        val cMat = Mat().also {
+            Imgproc.morphologyEx(bMat, it, Imgproc.MORPH_CLOSE, k)
+            bMat.release()
+            k.release()
+        }
         val bmp = Bitmap.createBitmap(cMat.cols(), cMat.rows(), Bitmap.Config.ARGB_8888).also { Utils.matToBitmap(cMat, it) }
         return cMat to bmp
     }
@@ -158,14 +263,26 @@ object Preprocessing {
 
 // Helper object for contour detection.
 object ContourDetection {
-    fun processContourDetection(mat: Mat) = findContours(mat).maxByOrNull { Imgproc.contourArea(it) }.let { c ->
-        val center = c?.let {
-            Imgproc.drawContours(mat, listOf(it), -1, Settings.BoundingBox.boxColor, Settings.BoundingBox.boxThickness)
-            val m = Imgproc.moments(it)
-            Point(m.m10 / m.m00, m.m01 / m.m00)
+    fun processContourDetection(mat: Mat): Pair<Point?, Mat> {
+        val contours = findContours(mat)
+        val largestContour = contours.maxByOrNull { Imgproc.contourArea(it) }
+        val center = largestContour?.let {
+            val moments = Imgproc.moments(it)
+            if (moments.m00 != 0.0) Point(moments.m10 / moments.m00, moments.m01 / moments.m00)
+            else null
         }
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR)
-        center to mat
+        largestContour?.let {
+            Imgproc.drawContours(
+                mat,
+                listOf(it),
+                -1,
+                Settings.BoundingBox.boxColor,
+                Settings.BoundingBox.boxThickness
+            )
+        }
+        contours.forEach(MatOfPoint::release)
+        return center to mat
     }
     private fun findContours(mat: Mat) = mutableListOf<MatOfPoint>().also {
         Mat().also { h -> Imgproc.findContours(mat, it, h, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE); h.release() }
